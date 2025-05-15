@@ -18,11 +18,13 @@ minikube version
 kubectl version
 ```
 
-- You should install krew extension for kubectl. This is required for RabbitMq to manage RabbitMq clusters. See instructions on https://krew.sigs.k8s.io/docs/user-guide/setup/install/ Once installed you can verify krew installation by typing:
+- You should install krew extension (kubectl plugin manager) for kubectl. This is required for RabbitMq to manage RabbitMq clusters. See instructions on https://krew.sigs.k8s.io/docs/user-guide/setup/install/ Once installed you can verify krew installation by typing:
 
 ```
 kubectl krew
 ```
+
+- To install Rabbit Mq operator it is required to patch yaml default configuration for kubernetes operator. This is shown later in Rabbit Mq section, but you must install a yaml patch tool like Carvel ytt. Instructions to install **ytt** are described here https://carvel.dev/ytt/docs/v0.51.0/install/
 
 ## Files in this folder
 
@@ -99,12 +101,7 @@ To install a fully functional RabbitMQ queue server on kubernetes you must insta
 
 ### Installing RabbitMQ kubernetes operator
 
-To install RabbitMQ operator it is required to add bitnami report reference. Then you must install kubernetes operator, in this case under kubernetes devel namespace.
-
-    helm repo add bitnami https://charts.bitnami.com/bitnami
-    helm install --namespace devel --values rabbitmq-values.yaml rabbit-mq bitnami/rabbitmq-cluster-operator
-
-Notice that RabbitMQ kubernetes operator requires some specific configuration. Provided that it is required to install Rabbit Mq cluster under "devel" namespace you should tell helm chart installer to ensure that. So you have to define a values yaml file, in this case **rabbitmq-values.yaml**, to tell the name of the working namespace to manage Rabbit Mq cluster. The content of this file for this purpose is shown below:
+Notice that RabbitMQ kubernetes operator requires some specific configuration for this environment, specifically you need to point the target namespace for RabbitMQ operator to work (devel namespace). You must take the default values.yaml file for RabbitMQ and it must be patched with the content shown below in file **rabbitmq-values-patch.yaml**
 
 ```yaml
 #@ load("@ytt:overlay", "overlay")
@@ -123,7 +120,29 @@ spec:
         - name: OPERATOR_SCOPE_NAMESPACE
           value: devel
 ```
+Given that **rabbitmq-values-original.yaml** represents default configuration for RabbitMQ cluster (you can download it from https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml) and rabbitmq-values-patch.yaml represents the patch file you can perform patch operation as shown below:
 
-### Installing krew
+    ytt -f rabbitmq-values-original.yaml -f rabbitmq-values-patch.yaml > rabbitmq-values.yaml
 
-https://krew.sigs.k8s.io/docs/user-guide/setup/install/
+
+
+To install RabbitMQ operator it is required to add bitnami report reference. Then you must install kubernetes operator, in this case under kubernetes devel namespace.
+
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm install --namespace devel --values rabbitmq-values.yaml rabbit-mq bitnami/rabbitmq-cluster-operator
+
+
+
+
+
+### Installing Rabbit Mq cluster
+
+Notice that you need to have installed krew kubectl extension (see Prerrequisites section on top on this document). First of all you need to install rabbitmq extension to manage RabbitMq clusters by typing:
+
+    kubectl krew install rabbitmq
+
+Once RabbitMq kubernetes operator is installed you can install a RabbitMq cluster by typing:
+
+    kubectl rabbitmq -n devel create rabbitmq-cluster
+
+where **rabbitmq-cluster** is the name of the Rabbit Mq cluster that has been installed. Be sure that the cluster is created under namespace devel by specifying -n devel flag.

@@ -1,4 +1,5 @@
 #DELETE RABBIT MQ
+kubectl rabbitmq -n devel delete rabbitmq-cluster
 #Delete Rabbit Mq kubernetes operator
 helm uninstall --namespace devel rabbit-mq
 #DELETE GRAFANA
